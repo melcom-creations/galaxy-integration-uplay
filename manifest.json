@@ -1,0 +1,10 @@
+{
+    "name": "Galaxy Ubisoft Connect plugin",
+    "platform": "uplay",
+    "guid": "afb5a69c-b2ee-4d58-b916-f4cd75d4999a",
+    "version": "2.0.2-64bit",
+    "description": "Ubisoft Connect integration for GOG Galaxy 2.1+ (64-bit)",
+    "author": "melcom",
+    "url": "https://github.com/melcom-creations/galaxy-integrations-64bit",
+    "script": "plugin.py"
+}
