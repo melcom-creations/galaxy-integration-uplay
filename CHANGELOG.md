@@ -4,6 +4,15 @@ All notable changes to the **Galaxy Ubisoft Connect plugin** will be documented 
 
 ---
 
+## Version 2.0.2-64bit
+
+### Fixed
+
+- **Ownership Filter Regression in `get_owned_games`:** The `2.0.1` crash-safety rework had also dropped the `if game.owned` filter when building the list returned to GOG Galaxy, so the API would return every entry in `games_collection` regardless of confirmed ownership. Since `UbisoftGame.owned` defaults to `None` and entries can be added from local configuration parsing before the separate ownership file has been matched, this risked surfacing unowned or unconfirmed titles in the GOG library. The ownership filter has been restored; the crash-safety wrapper is kept as a separate, additive layer rather than a replacement for it.
+- **Swallowed Authentication State:** `get_owned_games`'s safety wrapper now re-raises `AuthenticationRequired` instead of catching it like any other error. Previously an expired/invalid session could be reported back to GOG Galaxy as "zero owned games" instead of "please log in again".
+
+---
+
 ## Version 2.0.1-64bit
 
 ### Fixed

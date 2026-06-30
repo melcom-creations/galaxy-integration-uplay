@@ -1,11 +1,12 @@
 import sys
 import os
 
-# Load bundled modules from the local modules directory.
+# --- 64-bit /modules/ loader ---
 current_dir = os.path.dirname(os.path.abspath(__file__))
 modules_dir = os.path.join(current_dir, "modules")
 if os.path.isdir(modules_dir):
     sys.path.insert(0, modules_dir)
+# -------------------------------
 
 import asyncio
 import json
@@ -145,10 +146,17 @@ class UplayPlugin(Plugin):
             for game in self.games_collection:
                 game.considered_for_sending = True
 
-            return [game.as_galaxy_game() for game in self.games_collection]
+            # Keep the owned filter: games_collection is not pre-filtered to owned-only
+            # entries (e.g. local configuration parsing can add a game with owned=None
+            # before the separate ownership file has been matched), so dropping this
+            # filter would leak unowned/unconfirmed games into the GOG library.
+            return [game.as_galaxy_game() for game in self.games_collection if game.owned]
+        except AuthenticationRequired:
+            raise
         except Exception as e:
             log.exception(f"get_owned_games crashed: {repr(e)}")
             return []
+
     async def _parse_subscription_games(self):
         subscription_games = []
         sub_response = await self.client.get_subscription()
@@ -224,7 +232,7 @@ class UplayPlugin(Plugin):
             finally:
                 self.parsing_club_games = False
         else:
-            # Wait for the current library parse to finish before continuing.
+            # Wait until club games get parsed if parsing is already in progress
             while self.parsing_club_games:
                 await asyncio.sleep(0.2)
 
@@ -414,7 +422,7 @@ class UplayPlugin(Plugin):
         timeout = time.time() + 3
         while timeout >= time.time():
             if self.local_client.ownership_changed():
-                # Refresh the collection entry for this game.
+                # Will refresh informations in collection about the game
                 await self.get_owned_games()
             await asyncio.sleep(0.1)
 
@@ -446,7 +454,7 @@ class UplayPlugin(Plugin):
                     await self.activate_game(game.activation_id)
                     asyncio.create_task(self.install_game(game_id=game_id, retry=True))
 
-            # Fall back to the local client when no launch ID is available.
+            # if launch_id is not known, try to launch local client instead
             self.open_uplay_client()
             log.info(
                 f"Did not found game with game_id: {game_id}, proper launch_id and NotInstalled status, launching client.")
@@ -560,7 +568,7 @@ class UplayPlugin(Plugin):
                 return
             url = "start uplay://"
             subprocess.Popen(url, shell=True)
-            # Retry while the client is still trying to take focus after launch.
+            # Uplay tries to get focus a couple of times when being launched
             end_time = time.time() + 15
             while time.time() <= end_time:
                 await self.prevent_uplay_from_showing(kill_attempt=False)
@@ -613,17 +621,17 @@ class UplayPlugin(Plugin):
         async def get_game_library_settings(self, game_id, context):
             log.debug(f"Context {context}")
             if not context:
-                # No context data could be retrieved.
+                # Unable to retrieve context
                 return GameLibrarySettings(game_id, None, None)
             game_library_settings = context.get(game_id)
             if game_library_settings is None:
-                # Context data does not include tags or hidden status for this game.
+                # Able to retrieve context but game is not in its values -> It doesnt have any tags or hidden status set
                 return GameLibrarySettings(game_id, [], False)
             return GameLibrarySettings(game_id, ['favorite'] if game_library_settings['favorite'] else [],
                                        game_library_settings['hidden'])
 
     def reset_tick_count(self):
-        # Reset the tick count so delayed operations use a known delay.
+        # Resetting tick count ensures that certain operations performed on tick will be made with a known delay.
         self.tick_count = 0
 
     def tick(self):
