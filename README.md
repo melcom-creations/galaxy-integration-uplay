@@ -8,13 +8,29 @@ The original community integration has been updated to work with the current 64-
 
 ## ✨ Features
 
-* Compatible with GOG Galaxy 2.1+ (64-bit)
-* Python 3.13 support
-* Updated 64-bit dependencies
-* Improved login reliability
-* Modern Ubisoft Connect compatibility
-* Improved stability and compatibility
-* Ongoing maintenance and bug fixes
+- Compatible with GOG Galaxy 2.1+ (64-bit)
+- Python 3.13 support
+- Updated 64-bit dependencies
+- Improved login reliability
+- Modern Ubisoft Connect compatibility
+- Improved stability and compatibility
+- Ongoing maintenance and bug fixes
+
+---
+
+## 🛠️ Technical Highlights
+
+This section summarizes the parts of the plugin that make the integration work reliably on current 64-bit systems.
+
+- ⚙️ **64-bit Registry Handling** - Ubisoft Connect installation data is read from the redirected 32-bit registry view when needed, with a fallback to the native registry view. This lets the plugin detect installed games correctly on modern 64-bit Windows systems.
+
+- 🛡️ **Crash Protection in Game Loading** - The game loading path wraps local parsing and Ubisoft API calls in exception handling. If an API request or filesystem read fails, the plugin returns an empty result instead of crashing GOG Galaxy.
+
+- 🔑 **Current Login and API Identifiers** - The login flow uses the current Ubisoft Connect login app ID, while API requests use a separate Ubisoft App ID. Legacy identifiers are kept as fallback values where needed.
+
+- 🧹 **Bundled Runtime Dependencies** - The plugin ships with its required Python runtime modules in the `modules` folder so GOG Galaxy can load the integration without relying on a separate environment.
+
+- 📄 **Usage and Recovery Notes** - The README includes installation steps, plugin database reset guidance, and support details to help with common setup issues.
 
 ---
 
