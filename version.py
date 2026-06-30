@@ -1,28 +1,38 @@
-__version__ = '0.55.5-64bit'
+__version__ = "2.0.2-64bit"
 
 __changelog__ = {
-    "0.55.5-64bit": """
-        - 64-bit migration for Python 3.13 (by melcom)
-        - Extracted all dependencies to /modules/
-        - Updated PyYAML to safe_load standard
+    "2.0.2-64bit": """
+        - Restored the ownership filter in get_owned_games
+        - Re-raises AuthenticationRequired so expired sessions are reported correctly
+    """,
+    "2.0.1-64bit": """
+        - Added crash-safety wrappers around ownership and library parsing
+        - Added safe fallback returns for external API and parsing failures
+        - Updated login flow handling and Ubisoft API identifiers
+        - Fixed 64-bit game detection by reading the WOW6432Node registry path
+    """,
+    "2.0.0-64bit": """
+        - 64-bit migration for Python 3.13
+        - Extracted dependencies to /modules/
+        - Updated PyYAML to safe_load
+        - Reworked the project for 64-bit Galaxy client compatibility
     """,
     "0.55.5": """
-        - fix parsing club games during fetching owned games; extend logging for unparsable items
+        - Fix parsing club games during owned games fetch
     """,
     "0.55.4": """
-        - hotfix fetching club games by replacing version of API endpoint
+        - Hotfix for club games API endpoint
     """,
     "0.55.3": """
-        - changed login window's title
-        - replaced deprecated owned games endpoint
-        - fix problem with doubled gametimes for some games (eg. Trackmania, Division 2)
-        - remove +1h gametime fix for For Honour as it is already fixed on Ubisoft side
-        - round down gametime to full minutes to better reflect Ubisoft logic
+        - Login window title update
+        - Deprecated endpoint replacement
+        - Game time fixes for Ubisoft titles
+        - Improved gametime rounding logic
     """,
     "0.55.2": """
-        - bump galaxy.plugin.api version for more stable `get_local_size`
+        - Updated galaxy.plugin.api for stable get_local_size
     """,
     "0.55.1": """
-        - fix potential crashes due to blocking `get_local_size` method
-    """
+        - Fixed blocking issue in get_local_size method
+    """,
 }
