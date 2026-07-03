@@ -8,11 +8,11 @@ All notable changes to the **Galaxy Ubisoft Connect plugin** will be documented 
 
 ### Fixed
 
-- **Installed Games Not Detected (Cache Directory Moved by Ubisoft Connect):** On newer Ubisoft Connect installations, the client now stores its cache folder (containing the `ownership`, `configuration`, and `settings` files) under `%LOCALAPPDATA%\Ubisoft Game Launcher\cache` instead of `<InstallDir>\cache`. The plugin previously only looked in `<InstallDir>\cache`, causing `import_local_games` to always return an empty list — owned games showed up correctly, but none were recognized as installed, so they couldn't be launched from GOG Galaxy. Added a new `_resolve_cache_dir(install_path)` method that checks `<InstallDir>\cache` first and falls back to `%LOCALAPPDATA%\Ubisoft Game Launcher\cache` if not present. `refresh()` now uses the resolved cache directory for all three paths. Existing installations with the cache still in `InstallDir` are unaffected.
+- **Installed Games Not Detected (Cache Directory Moved by Ubisoft Connect):** On newer Ubisoft Connect installations, the client now stores its cache folder (containing the `ownership`, `configuration`, and `settings` files) under `%LOCALAPPDATA%\Ubisoft Game Launcher\cache` instead of `<InstallDir>\cache`. The plugin previously only looked in `<InstallDir>\cache`, causing `import_local_games` to always return an empty list - owned games showed up correctly, but none were recognized as installed, so they couldn't be launched from GOG Galaxy. Added a new `_resolve_cache_dir(install_path)` method that checks `<InstallDir>\cache` first and falls back to `%LOCALAPPDATA%\Ubisoft Game Launcher\cache` if not present. `refresh()` now uses the resolved cache directory for all three paths. Existing installations with the cache still in `InstallDir` are unaffected.
 
 ### Notes
 
-- The `activations` folder (created when a game is installed/launched) has not yet been audited for the same InstallDir-vs-AppData discrepancy; flagged for a future release.
+- We also checked whether the plugin uses an `activations` folder (created by Ubisoft Connect when a game is installed or launched) that could have the same install-location problem. It doesn't - this plugin never reads that folder, so there's nothing to fix there.
 
 ### Thanks
 
