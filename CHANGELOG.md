@@ -4,6 +4,22 @@ All notable changes to the **Galaxy Ubisoft Connect plugin** will be documented 
 
 ---
 
+## Version 2.0.3-64bit
+
+### Fixed
+
+- **Installed Games Not Detected (Cache Directory Moved by Ubisoft Connect):** On newer Ubisoft Connect installations, the client now stores its cache folder (containing the `ownership`, `configuration`, and `settings` files) under `%LOCALAPPDATA%\Ubisoft Game Launcher\cache` instead of `<InstallDir>\cache`. The plugin previously only looked in `<InstallDir>\cache`, causing `import_local_games` to always return an empty list — owned games showed up correctly, but none were recognized as installed, so they couldn't be launched from GOG Galaxy. Added a new `_resolve_cache_dir(install_path)` method that checks `<InstallDir>\cache` first and falls back to `%LOCALAPPDATA%\Ubisoft Game Launcher\cache` if not present. `refresh()` now uses the resolved cache directory for all three paths. Existing installations with the cache still in `InstallDir` are unaffected.
+
+### Notes
+
+- The `activations` folder (created when a game is installed/launched) has not yet been audited for the same InstallDir-vs-AppData discrepancy; flagged for a future release.
+
+### Thanks
+
+- Special thanks to GOG Community member **MacStew** for the detailed log files that helped track this down! 🙂
+
+---
+
 ## Version 2.0.2-64bit
 
 ### Fixed

@@ -96,6 +96,28 @@ class LocalClient(object):
         except OSError:
             return False, ''
 
+    def _resolve_cache_dir(self, install_path):
+        # Ubisoft Connect has historically stored its cache (ownership,
+        # settings, configuration) under <InstallDir>\cache. Some installs
+        # instead keep it under %LOCALAPPDATA%\Ubisoft Game Launcher\cache.
+        # Prefer the install-dir cache if it exists, otherwise fall back to
+        # the AppData location so we don't miss games just because the
+        # cache lives somewhere unexpected.
+        install_cache = os.path.join(install_path, "cache")
+        if os.path.isdir(install_cache):
+            return install_cache
+
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            appdata_cache = os.path.join(local_app_data, "Ubisoft Game Launcher", "cache")
+            if os.path.isdir(appdata_cache):
+                log.info(f'Using AppData cache location: {appdata_cache}')
+                return appdata_cache
+
+        # Neither location exists yet (e.g. user never logged in anywhere);
+        # default to the install-dir path to keep prior behavior/logging.
+        return install_cache
+
     def refresh(self):
         if SYSTEM == System.MACOS:
             return
@@ -105,11 +127,12 @@ class LocalClient(object):
             if not self._is_installed:
                 log.info('Local client installed')
                 self._is_installed = True
-            self.configurations_path = os.path.join(path, "cache", "configuration", "configurations")
+            cache_dir = self._resolve_cache_dir(path)
+            self.configurations_path = os.path.join(cache_dir, "configuration", "configurations")
             self.launcher_log_path = os.path.join(path, "logs", "launcher_log.txt")
             if self.user_id is not None:
-                self.ownership_path = os.path.join(path, "cache", "ownership", self.user_id)
-                self.settings_path = os.path.join(path, "cache", "settings", self.user_id)
+                self.ownership_path = os.path.join(cache_dir, "ownership", self.user_id)
+                self.settings_path = os.path.join(cache_dir, "settings", self.user_id)
         else:
             if self._is_installed:
                 log.info('Local client uninstalled')
