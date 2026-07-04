@@ -1,9 +1,17 @@
 # Changelog
 
-All notable changes to the **Galaxy Ubisoft Connect plugin** will be documented in this file.
+All notable changes to this plugin will be documented in this file.
 
 ---
 
+## Version 2.0.5-64bit
+
+### Fixed
+
+- **Plugin Root Folder and Module Loader Normalization:** The ZIP root folder now matches the `guid` from `manifest.json` exactly, and the startup loader accepts `modules`, `Modules`, or any case-variant of that folder name before adding it to `sys.path`. This prevents start failures caused by a mismatched package root or a case-sensitive bundled module path.
+- **YAML import startup hardening:** Improved `sys.path` bootstrap with normalized absolute-path handling and duplicate-path protection so bundled `yaml` is reliably discovered, preventing `ModuleNotFoundError: No module named 'yaml'` in edge-case runtime environments.
+
+---
 ## Version 2.0.4-64bit
 
 ### Fixed

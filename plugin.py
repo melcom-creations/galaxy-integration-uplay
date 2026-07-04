@@ -2,10 +2,33 @@ import sys
 import os
 
 # --- 64-bit /modules/ loader ---
-current_dir = os.path.dirname(os.path.abspath(__file__))
-modules_dir = os.path.join(current_dir, "modules")
+def _resolve_modules_dir() -> str:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    for candidate in ("modules", "Modules"):
+        candidate_dir = os.path.join(current_dir, candidate)
+        if os.path.isdir(candidate_dir):
+            return candidate_dir
+    try:
+        for entry in os.listdir(current_dir):
+            if entry.lower() == "modules":
+                candidate_dir = os.path.join(current_dir, entry)
+                if os.path.isdir(candidate_dir):
+                    return candidate_dir
+    except OSError:
+        pass
+    return os.path.join(current_dir, "modules")
+
+
+def _normalized_path(path: str) -> str:
+    return os.path.normcase(os.path.normpath(os.path.abspath(path)))
+
+
+modules_dir = _resolve_modules_dir()
 if os.path.isdir(modules_dir):
-    sys.path.insert(0, modules_dir)
+    resolved_modules_dir = os.path.abspath(modules_dir)
+    normalized_sys_path = {_normalized_path(p) for p in sys.path}
+    if _normalized_path(resolved_modules_dir) not in normalized_sys_path:
+        sys.path.insert(0, resolved_modules_dir)
 # -------------------------------
 
 import asyncio
