@@ -4,6 +4,29 @@ All notable changes to the **Galaxy Ubisoft Connect plugin** will be documented 
 
 ---
 
+## Version 2.0.5-64bit
+
+### Removed
+
+- **Unused Console-Script Stubs (`idna.exe`, `chardetect.exe`):** Both files were pip-generated console-script entry points, byproducts of installing the `idna` and `chardet`/`charset-normalizer` packages. Neither is imported or called by the plugin at runtime; only the underlying Python modules are used. `idna.exe` embedded a local Windows account name in its shebang line, and `chardetect.exe` embedded an internal CI workspace path. Both files have been removed from the package.
+
+---
+
+## Version 2.0.4-64bit
+
+### Fixed
+
+- **Library Silently Emptied by a Single Bad Configuration Entry:** `LocalParser.parse_games()` parsed the Ubisoft configuration file as a Python generator. If any single game record in that file was malformed (corrupt/truncated YAML, or missing the expected `root` section), the resulting exception propagated out of the generator entirely, and `_parse_local_games()` in `plugin.py` only caught `scanner.ScannerError` — not `yaml.YAMLError`, `KeyError`, or `TypeError`. The exception therefore skipped `games_collection.extend(games)` completely, discarding every game already parsed for that pass, not just the bad one. Combined with `get_owned_games()`'s crash-safety wrapper, this could make the whole library appear empty and then reappear once the file changed again. Each configuration record is now parsed defensively; a malformed record is logged and skipped, and every other valid record is still added.
+- **Race Condition on Ownership-File Reparse:** `tick()` checked `self.updating_games` on the main thread but the flag was only set to `True` inside the worker function `_update_games()`, which runs via `run_in_executor()`. If the ownership file changed again before the worker actually started, a second reparse could be scheduled on top of the first. The flag is now set on the main thread immediately before scheduling the worker.
+- **Event Loop Blocked on Shutdown:** `BackendClient.close()` used a blocking `time.sleep(1.5)` inside an `async def`, freezing the entire plugin (not just the closing client) for up to 1.5 seconds during shutdown/reload. Replaced with `await asyncio.sleep(1.5)`.
+- **Masked Errors During Auth Refresh:** `_refresh_auth()` used a bare `except:`, which also catches things like `asyncio.CancelledError` and reroutes them into a full remember-me refresh cycle instead of letting them propagate. Narrowed to `except Exception:` with proper logging.
+- **Watched-Process Cleanup Could Skip Entries:** `update_watched_processes_list()` removed items from `self.watched_processes` while iterating over that same list, which can skip the entry immediately following a removed one. Now iterates over a snapshot copy.
+- **False Process Match on Empty Game Path:** `_get_process_by_path()` checked `game.path.lower() in p.info['exe'].lower()`. When `game.path` was empty, this substring check was always `True`, so the first process psutil returned could be incorrectly reported as the running game. Now returns `None` immediately if the game has no known path.
+- **Dead Code in `GamesCollection.append()`:** The override constructed an `AssertionError` but never raised it, so calling `.append()` directly would silently do nothing instead of failing loudly. It isn't currently called anywhere in the codebase, but now raises as originally intended, so any future misuse fails fast instead of failing silently.
+- **Version Mismatch:** `version.py` reported `2.0.2-64bit` while `manifest.json` reported `2.0.3-64bit`. Both now report `2.0.4-64bit`.
+
+---
+
 ## Version 2.0.3-64bit
 
 ### Fixed

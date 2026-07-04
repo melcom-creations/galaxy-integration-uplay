@@ -340,8 +340,19 @@ class LocalParser(object):
             if game['size']:
                 stream = self.configuration_raw[game['offset']: game['offset'] + game['size']].decode("utf8", errors='ignore')
                 if stream and 'start_game' in stream:
-                    yaml_object = yaml.safe_load(stream.replace('\t',' '))
-                    yield self._parse_game(yaml_object, game['install_id'], game['launch_id'])
+                    try:
+                        yaml_object = yaml.safe_load(stream.replace('\t', ' '))
+                        if not isinstance(yaml_object, dict) or 'root' not in yaml_object:
+                            log.warning(f"Skipping malformed configuration record "
+                                        f"install_id={game.get('install_id')}: missing/invalid 'root' section")
+                            continue
+                        yield self._parse_game(yaml_object, game['install_id'], game['launch_id'])
+                    except yaml.YAMLError as e:
+                        log.error(f"Skipping configuration record install_id={game.get('install_id')} "
+                                  f"due to a YAML parsing error: {repr(e)}")
+                    except (KeyError, TypeError, ValueError) as e:
+                        log.error(f"Skipping configuration record install_id={game.get('install_id')} "
+                                  f"due to an unexpected structure: {repr(e)}")
 
     def get_owned_local_games(self, ownership_data):
         self.ownership_raw = ownership_data

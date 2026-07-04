@@ -6,7 +6,6 @@ import dateutil.parser
 
 import aiohttp
 import asyncio
-import time
 
 from galaxy.api.errors import AuthenticationRequired, AccessDenied, UnknownError
 
@@ -36,7 +35,7 @@ class BackendClient():
     async def close(self):
         # Allow the refresh workflow to finish before closing.
         if self.__refresh_in_progress:
-            time.sleep(1.5)
+            await asyncio.sleep(1.5)
         await self._session.close()
 
     async def request(self, method, url, *args, **kwargs):
@@ -118,7 +117,8 @@ class BackendClient():
             try:
                 await self._refresh_ticket()
                 self._plugin.store_credentials(self.get_credentials())
-            except:
+            except Exception as e:
+                log.warning(f"Ticket refresh failed, falling back to remember-me refresh: {repr(e)}")
                 await self._refresh_remember_me()
                 await self._refresh_ticket()
                 self._plugin.store_credentials(self.get_credentials())

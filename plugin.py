@@ -646,6 +646,12 @@ class UplayPlugin(Plugin):
                 self._update_local_games_status()
                 if self.local_client.ownership_changed():
                     if not self.updating_games:
+                        # Set the flag here, on the main thread, before scheduling the
+                        # worker. Setting it inside _update_games() itself left a window
+                        # (between run_in_executor() returning and the worker actually
+                        # starting) where a second reparse could be scheduled on top of
+                        # the first, since both ticks would see updating_games == False.
+                        self.updating_games = True
                         log.info('Ownership file has been changed or created. Reparsing.')
                         loop.run_in_executor(None, self._update_games)
         return

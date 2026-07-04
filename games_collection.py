@@ -12,7 +12,7 @@ class GamesCollection(list):
         return local_games
 
     def append(self, _):
-        AssertionError('Method not available. Use extend')
+        raise AssertionError('Method not available. Use extend')
 
     def _extend_existing_game_entry(self, game):
         for game_in_list in self:

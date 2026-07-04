@@ -32,7 +32,7 @@ class ProcessWatcher(object):
 
     def update_watched_processes_list(self):
         try:
-            for proc in self.watched_processes:
+            for proc in list(self.watched_processes):
                 if not proc.process.is_running():
                     log.info(f"Removing {proc}")
                     self.watched_processes.remove(proc)
@@ -72,6 +72,8 @@ class GameStatusNotifier(object):
             return False
 
     def _get_process_by_path(self, game: UbisoftGame):
+        if not game.path:
+            return None
         for p in psutil.process_iter(attrs=['exe'], ad_value=''):
             if game.path.lower() in p.info['exe'].lower():
                 try:
