@@ -4,14 +4,6 @@ All notable changes to the **Galaxy Ubisoft Connect plugin** will be documented 
 
 ---
 
-## Version 2.0.5-64bit
-
-### Removed
-
-- **Unused Console-Script Stubs (`idna.exe`, `chardetect.exe`):** Both files were pip-generated console-script entry points, byproducts of installing the `idna` and `chardet`/`charset-normalizer` packages. Neither is imported or called by the plugin at runtime; only the underlying Python modules are used. `idna.exe` embedded a local Windows account name in its shebang line, and `chardetect.exe` embedded an internal CI workspace path. Both files have been removed from the package.
-
----
-
 ## Version 2.0.4-64bit
 
 ### Fixed
@@ -24,6 +16,10 @@ All notable changes to the **Galaxy Ubisoft Connect plugin** will be documented 
 - **False Process Match on Empty Game Path:** `_get_process_by_path()` checked `game.path.lower() in p.info['exe'].lower()`. When `game.path` was empty, this substring check was always `True`, so the first process psutil returned could be incorrectly reported as the running game. Now returns `None` immediately if the game has no known path.
 - **Dead Code in `GamesCollection.append()`:** The override constructed an `AssertionError` but never raised it, so calling `.append()` directly would silently do nothing instead of failing loudly. It isn't currently called anywhere in the codebase, but now raises as originally intended, so any future misuse fails fast instead of failing silently.
 - **Version Mismatch:** `version.py` reported `2.0.2-64bit` while `manifest.json` reported `2.0.3-64bit`. Both now report `2.0.4-64bit`.
+
+### Removed
+
+- **Unused Console-Script Stubs (`idna.exe`, `chardetect.exe`):** Both files were pip-generated console-script entry points, byproducts of installing the `idna` and `chardet`/`charset-normalizer` packages. Neither is imported or called by the plugin at runtime; only the underlying Python modules are used. `idna.exe` embedded a local Windows account name in its shebang line, and `chardetect.exe` embedded an internal CI workspace path. Both files have been removed from the package.
 
 ---
 
