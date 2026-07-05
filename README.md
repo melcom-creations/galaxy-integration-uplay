@@ -61,63 +61,15 @@ The resulting directory structure **must** look like this:
 
 5. Start GOG Galaxy.
 
-### If the plugin folder is missing
-
-If a future ZIP archive does **not** already contain the folder:
-
-```text
-uplay_afb5a69c-b2ee-4d58-b916-f4cd75d4999a
-```
-
-1. Open:
-
-```text
-%localappdata%\GOG.com\Galaxy\plugins\installed\
-```
-
-2. Create a new folder with exactly that name.
-3. Extract **all files from the ZIP archive into the newly created folder**.
-
 ---
 
 ## 🔄 Resetting the Plugin Database (Recommended)
 
 If the plugin behaves unexpectedly after an update, resetting the local plugin database is recommended.
 
-1. Open:
-
-```text
-C:\ProgramData\GOG.com\Galaxy\storage\plugins\
-```
-
-2. Locate all files beginning with:
-
-```text
-uplay_
-```
-
-and ending with:
-
-```text
--storage.db
-```
-
-3. Rename each database by appending `.old` to its filename.
-
-Example:
-
-```text
-uplay_xxxxxxxxx-storage.db
-```
-
-becomes
-
-```text
-uplay_xxxxxxxxx-storage.db.old
-```
-
-4. Start GOG Galaxy again.
-5. Reconnect the Ubisoft Connect integration if necessary.
+1. Open `C:\ProgramData\GOG.com\Galaxy\storage\plugins\` and find the files starting with `uplay_` and ending in `-storage.db`.
+2. Rename each by appending `.old` (e.g. `uplay_xxxxxxxxx-storage.db` -> `uplay_xxxxxxxxx-storage.db.old`).
+3. Start GOG Galaxy again and reconnect the Ubisoft Connect integration if necessary.
 
 ---
 
@@ -151,3 +103,4 @@ If you would like to report a bug, suggest an improvement, or get in touch, plea
 📩 https://melcom-creations.github.io/melcom-music/contact.html
 
 Thank you for your patience and support!
+
