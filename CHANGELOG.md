@@ -6,10 +6,20 @@ All notable changes to this plugin will be documented in this file.
 
 ## Version 2.0.5-64bit
 
-### Fixed
+### Overview
+Maintenance release focused on startup reliability and package-layout consistency. The update aligns ZIP root structure with plugin metadata and hardens dependency-path bootstrapping for bundled modules.
 
+### Fixed
 - **Plugin Root Folder and Module Loader Normalization:** The ZIP root folder now matches the `guid` from `manifest.json` exactly, and the startup loader accepts `modules`, `Modules`, or any case-variant of that folder name before adding it to `sys.path`. This prevents start failures caused by a mismatched package root or a case-sensitive bundled module path.
 - **YAML import startup hardening:** Improved `sys.path` bootstrap with normalized absolute-path handling and duplicate-path protection so bundled `yaml` is reliably discovered, preventing `ModuleNotFoundError: No module named 'yaml'` in edge-case runtime environments.
+
+### Technical Breakdown
+
+#### 1. Package root and module resolution alignment
+The plugin package root now matches manifest identity and dependency bootstrapping accepts module-folder case variants, preventing startup mismatches.
+
+#### 2. Startup import robustness
+Normalized absolute-path insertion and duplicate-path guards keep bundled dependency discovery stable across different runtime path states.
 
 ---
 ## Version 2.0.4-64bit
