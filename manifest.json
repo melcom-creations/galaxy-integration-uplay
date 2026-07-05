@@ -6,5 +6,12 @@
   "description": "Ubisoft Connect integration for GOG Galaxy 2.1+ (64-bit)",
   "author": "melcom",
   "url": "https://github.com/melcom-creations/galaxy-integrations-64bit",
+  "external_updater": {
+    "provider": "github-releases",
+    "repo": "melcom-creations/galaxy-integrations-64bit",
+    "releases_url": "https://github.com/melcom-creations/galaxy-integrations-64bit/releases",
+    "latest_release_api": "https://api.github.com/repos/melcom-creations/galaxy-integrations-64bit/releases/latest",
+    "asset_pattern": "*-v*-64bit.zip"
+  },
   "script": "plugin.py"
 }
