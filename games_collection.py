@@ -1,8 +1,68 @@
 import logging as log
-from definitions import GameStatus
+from consts import UBISOFT_CONFIGURATIONS_BLACKLISTED_NAMES
+from definitions import GameStatus, GameType
+
+
+STATUS_PRIORITY = {
+    GameStatus.Unknown: 0,
+    GameStatus.NotInstalled: 1,
+    GameStatus.Installed: 2,
+    GameStatus.Running: 3,
+}
 
 
 class GamesCollection(list):
+
+    @staticmethod
+    def _status_rank(status):
+        return STATUS_PRIORITY.get(status, -1)
+
+    @staticmethod
+    def _has_useful_name(game):
+        if not game.name:
+            return False
+        if game.name.lower() in UBISOFT_CONFIGURATIONS_BLACKLISTED_NAMES:
+            return False
+        if game.name.startswith("steam_linked_"):
+            return False
+        return True
+
+    def _copy_preferred_metadata(self, target, source):
+        if source.space_id:
+            target.space_id = source.space_id
+        if source.install_id:
+            target.install_id = source.install_id
+        if source.launch_id:
+            target.launch_id = source.launch_id
+        if source.path:
+            target.path = source.path
+        if source.special_registry_path:
+            target.special_registry_path = source.special_registry_path
+        if source.exe:
+            target.exe = source.exe
+        if source.third_party_id:
+            target.third_party_id = source.third_party_id
+        if source.type and target.type != GameType.Steam:
+            target.type = source.type
+        if self._has_useful_name(source) or not self._has_useful_name(target):
+            if source.name:
+                target.name = source.name
+
+    def _should_replace_metadata(self, current, incoming):
+        if self._status_rank(incoming.status) > self._status_rank(current.status):
+            return True
+
+        if current.space_id and incoming.space_id and current.space_id == incoming.space_id:
+            if current.type == GameType.Steam and incoming.type != GameType.Steam:
+                if self._has_useful_name(incoming) and not self._has_useful_name(current):
+                    return True
+                if incoming.install_id and incoming.launch_id and incoming.install_id == incoming.launch_id:
+                    return True
+
+        if self._has_useful_name(incoming) and not self._has_useful_name(current):
+            return True
+
+        return False
 
     def get_local_games(self):
         local_games = []
@@ -18,6 +78,9 @@ class GamesCollection(list):
         for game_in_list in self:
             if (game.space_id and game.space_id == game_in_list.space_id) or (game.install_id and game.install_id == game_in_list.install_id) or \
                     (game.launch_id and game.launch_id == game_in_list.launch_id):
+                if self._should_replace_metadata(game_in_list, game):
+                    log.debug(f"Extending existing game entry {game_in_list} with preferred metadata from {game}")
+                    self._copy_preferred_metadata(game_in_list, game)
                 if game.install_id and game.launch_id and game.install_id != game.launch_id and (game_in_list.install_id == game_in_list.launch_id):
                     log.debug(f"Extending existing game entry {game_in_list} with more specific install/launch id launch id: {game.launch_id} and install id: {game.install_id}")
                     game_in_list.install_id = game.install_id
@@ -29,9 +92,10 @@ class GamesCollection(list):
                 if game.space_id and not game_in_list.space_id:
                     log.debug(f"Extending existing game entry {game_in_list} with space id: {game.space_id}")
                     game_in_list.space_id = game.space_id
-                if game.status is not GameStatus.Unknown and game_in_list.status is GameStatus.Unknown:
+                if self._status_rank(game.status) > self._status_rank(game_in_list.status):
                     log.debug(f"Extending existing game entry {game_in_list} with installation status: {game.status}")
                     game_in_list.status = game.status
+                    self._copy_preferred_metadata(game_in_list, game)
                 if game.owned is not None:
                     log.debug(f"Extending existing game entry {game_in_list} with owned status: {game.owned}")
                     game_in_list.owned = game.owned

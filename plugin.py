@@ -459,6 +459,15 @@ class UplayPlugin(Plugin):
                 game_ids = [game.space_id, game.install_id, game.launch_id]
                 if (game_id in game_ids) and game.owned and game.status in [GameStatus.NotInstalled,
                                                                             GameStatus.Unknown]:
+                    if game.type == GameType.Steam:
+                        if is_steam_installed() and game.third_party_id:
+                            log.info(f"Installing Steam-linked game: {game_id}, {game}")
+                            subprocess.Popen(f"start steam://install/{game.third_party_id}", shell=True)
+                        else:
+                            log.warning(
+                                f"Steam not installed or missing third_party_id for game {game_id}, opening Ubisoft Connect instead")
+                            self.open_uplay_client()
+                        return
                     if game.install_id:
                         log.info(f"Installing game: {game_id}, {game}")
                         subprocess.Popen(f"start uplay://install/{game.install_id}", shell=True)

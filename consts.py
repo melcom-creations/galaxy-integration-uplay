@@ -1,14 +1,19 @@
 ﻿import os
+from pathlib import Path
 from definitions import System, SYSTEM
 import re
 
 UBISOFT_REGISTRY = "SOFTWARE\\Ubisoft"
 STEAM_REGISTRY = "Software\\Valve\\Steam"
 UBISOFT_REGISTRY_LAUNCHER = "SOFTWARE\\Ubisoft\\Launcher"
+UBISOFT_WOW6432_REGISTRY_LAUNCHER = "SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher"
 UBISOFT_REGISTRY_LAUNCHER_INSTALLS = "SOFTWARE\\Ubisoft\\Launcher\\Installs"
 
+_local_appdata = Path(os.getenv('LOCALAPPDATA') or Path.home() / 'AppData' / 'Local')
+APPDATA_PATH = _local_appdata / 'Ubisoft Game Launcher'
+
 if SYSTEM == System.WINDOWS:
-    UBISOFT_SETTINGS_YAML = os.path.join(os.getenv('LOCALAPPDATA'), 'Ubisoft Game Launcher', 'settings.yml')
+    UBISOFT_SETTINGS_YAML = str(APPDATA_PATH / 'settings.yaml')
 
 UBISOFT_CONFIGURATIONS_BLACKLISTED_NAMES = ["gamename", "l1", '', 'ubisoft game', 'name']
 
@@ -53,6 +58,10 @@ AUTH_JS = {
         '''
     ]
 }
+
+
+
+
 
 
 

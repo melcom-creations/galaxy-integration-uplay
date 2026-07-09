@@ -174,13 +174,11 @@ class GameStatusNotifier(object):
         statuses = self.statuses
         while True:
             line_list = self._get_launcher_log_lines(20)
-            if line_list:
-                try:
-                    for install_id, game in self.games.items():
-                        statuses[install_id] = self._get_game_status(game, line_list)
-                except Exception as e:
-                    log.error(f"Process data error {repr(e)}")
-                self.statuses = statuses
+            try:
+                for install_id, game in self.games.items():
+                    statuses[install_id] = self._get_game_status(game, line_list)
+            except Exception as e:
+                log.error(f"Process data error {repr(e)}")
+            self.statuses = statuses
 
             time.sleep(1)
-

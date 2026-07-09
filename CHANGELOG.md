@@ -4,6 +4,28 @@ All notable changes to this plugin will be documented in this file.
 
 ---
 
+## v2.0.6-64bit
+
+### Fixed
+
+- **Stale Game Status Not Refreshed When Launcher Log Is Empty:** `GameStatusNotifier._process_data` only recomputed game statuses when the Ubisoft Connect launcher log had readable lines in that cycle. Steam-owned games determine install status from the Windows registry, independent of the launcher log, so an empty or temporarily unavailable log left their status unrefreshed. This could leave a Steam-owned game reported as "not installed" even after installation completed. The status loop now recomputes statuses for all tracked games every cycle regardless of launcher log content.
+- **Cache Directory Resolution Order:** `_resolve_cache_dir` now checks `%LOCALAPPDATA%\Ubisoft Game Launcher\cache` before falling back to `<InstallDir>\cache`, since current Ubisoft Connect installations keep the live `configuration`/`ownership` files there. Reading a stale install-directory cache could cause recently added games to be missing from the local configuration parse entirely.
+- **Steam-Linked Config Records Discarded on Unresolved Name:** Configuration records for Steam-linked entries whose display name could not be resolved were previously skipped without a trace, so the plugin never learned their `install_id`, `launch_id`, or install status. Such records are now preserved with a placeholder name (`steam_linked_<id>`) so their metadata is available for merging.
+- **Merge Logic Kept the Steam-Linked Placeholder Name:** Because the placeholder name `steam_linked_<id>` was not recognized as a placeholder, `_has_useful_name` treated it as valid, so the real title from the Club Request data was never merged in. GOG Galaxy could show `steam_linked_<id>` instead of the actual game title. `_has_useful_name` now also treats the `steam_linked_` prefix as a placeholder.
+- **Merge Logic Overwrote `Steam` Type With `New`:** Once the previous fix allowed the Club Request entry (`type='New'`) to be merged into a Steam-linked entry, `_copy_preferred_metadata` unconditionally overwrote `target.type` with the incoming `type`, downgrading a Steam-linked entry to `New`. This caused a later status check for `GameType.New` to find no matching Ubisoft-registry install record and reset the game to "not installed", even though it was installed via Steam. `_copy_preferred_metadata` no longer overwrites `type` on a target that is already `GameType.Steam`.
+
+### Known Issues
+
+- **Occasional Ghost Entries / Missing Free Extras:** Some accounts may see a title listed as owned in GOG Galaxy that no longer shows up in Ubisoft Connect, or vice versa (for example, free bonus content like the Discovery Tour editions of Assassin's Creed Origins/Odyssey not appearing at all). This comes from how Ubisoft's own backend reports ownership for these titles - the data the plugin receives from Ubisoft simply does not distinguish these cases from regular ownership, and in at least one observed case the same title's reported ownership changed on Ubisoft's side over time without any action from the user. There is currently no reliable way to detect or filter this from the plugin side.
+- Thanks to **Randalator** from the GOG Community for reporting and helping narrow this down.
+
+### Special Thanks
+
+Special thanks to **MacStew** from the GOG Community for the detailed testing and logs.
+Without his report and follow-up verification, I would not have caught this issue because the plugin was working fine in my own environment.
+
+---
+
 ## Version 2.0.5-64bit
 
 ### Overview

@@ -1,6 +1,6 @@
 from definitions import SYSTEM, System
 
-from consts import UBISOFT_REGISTRY_LAUNCHER
+from consts import UBISOFT_REGISTRY_LAUNCHER, UBISOFT_WOW6432_REGISTRY_LAUNCHER, APPDATA_PATH
 import os
 import logging as log
 
@@ -69,7 +69,7 @@ class LocalClient(object):
         return self._is_installed
 
     def is_running(self):
-        return ctypes.windll.user32.FindWindowW(None, "Uplay")
+        return ctypes.windll.user32.FindWindowW(None, "Ubisoft Connect")
 
     @property
     def was_user_logged_in(self):
@@ -78,18 +78,16 @@ class LocalClient(object):
         return os.path.exists(self.ownership_path)
 
     def _find_windows_client(self):
-        # Ubisoft Connect is a 32-bit app; on a 64-bit Python/GOG Galaxy process its registry
-        # entry lives in the WOW6432Node redirected view, not the native 64-bit view. Try the
-        # 32-bit view first, then fall back to a plain read just in case.
+        # Try the native launcher key first, then the WOW6432Node key used on some installs.
         try:
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, UBISOFT_REGISTRY_LAUNCHER, 0,
-                                winreg.KEY_READ | winreg.KEY_WOW64_32KEY) as key:
+                                winreg.KEY_READ) as key:
                 directory, _ = winreg.QueryValueEx(key, "InstallDir")
                 return os.access(directory, os.F_OK), directory
         except OSError:
             pass
         try:
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, UBISOFT_REGISTRY_LAUNCHER, 0,
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, UBISOFT_WOW6432_REGISTRY_LAUNCHER, 0,
                                 winreg.KEY_READ) as key:
                 directory, _ = winreg.QueryValueEx(key, "InstallDir")
                 return os.access(directory, os.F_OK), directory
@@ -97,25 +95,19 @@ class LocalClient(object):
             return False, ''
 
     def _resolve_cache_dir(self, install_path):
-        # Ubisoft Connect has historically stored its cache (ownership,
-        # settings, configuration) under <InstallDir>\cache. Some installs
-        # instead keep it under %LOCALAPPDATA%\Ubisoft Game Launcher\cache.
-        # Prefer the install-dir cache if it exists, otherwise fall back to
-        # the AppData location so we don't miss games just because the
-        # cache lives somewhere unexpected.
         install_cache = os.path.join(install_path, "cache")
+        appdata_cache = os.path.join(APPDATA_PATH, "cache")
+
+        # Prefer the modern AppData cache when it actually exists, because current
+        # Ubisoft Connect installs often keep the live configuration there.
+        if os.path.isdir(appdata_cache):
+            log.info(f'Using AppData cache location: {appdata_cache}')
+            return appdata_cache
+
         if os.path.isdir(install_cache):
             return install_cache
 
-        local_app_data = os.environ.get("LOCALAPPDATA")
-        if local_app_data:
-            appdata_cache = os.path.join(local_app_data, "Ubisoft Game Launcher", "cache")
-            if os.path.isdir(appdata_cache):
-                log.info(f'Using AppData cache location: {appdata_cache}')
-                return appdata_cache
-
-        # Neither location exists yet (e.g. user never logged in anywhere);
-        # default to the install-dir path to keep prior behavior/logging.
+        # Neither location exists yet; default to the install-dir path to keep a stable fallback.
         return install_cache
 
     def refresh(self):
@@ -127,16 +119,34 @@ class LocalClient(object):
             if not self._is_installed:
                 log.info('Local client installed')
                 self._is_installed = True
+
             cache_dir = self._resolve_cache_dir(path)
             self.configurations_path = os.path.join(cache_dir, "configuration", "configurations")
             self.launcher_log_path = os.path.join(path, "logs", "launcher_log.txt")
+
             if self.user_id is not None:
-                self.ownership_path = os.path.join(cache_dir, "ownership", self.user_id)
-                self.settings_path = os.path.join(cache_dir, "settings", self.user_id)
+                appdata_ownership = os.path.join(APPDATA_PATH, "cache", "ownership", self.user_id)
+                appdata_settings = os.path.join(APPDATA_PATH, "cache", "settings", self.user_id)
+                install_ownership = os.path.join(cache_dir, "ownership", self.user_id)
+                install_settings = os.path.join(cache_dir, "settings", self.user_id)
+
+                if os.access(appdata_ownership, os.F_OK):
+                    self.ownership_path = appdata_ownership
+                    log.info('Using AppData path for ownership file')
+                else:
+                    self.ownership_path = install_ownership
+                    log.info('Using cache path for ownership file')
+
+                if os.access(appdata_settings, os.F_OK):
+                    self.settings_path = appdata_settings
+                    log.info('Using AppData path for settings file')
+                else:
+                    self.settings_path = install_settings
+                    log.info('Using cache path for settings file')
         else:
             if self._is_installed:
                 log.info('Local client uninstalled')
-                self._is_installed = False
+            self._is_installed = False
             self.configurations_path = None
             self.ownership_path = None
             self.settings_path = None

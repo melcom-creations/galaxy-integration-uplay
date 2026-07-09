@@ -255,6 +255,17 @@ class LocalParser(object):
             if 'localizations' in game_yaml and 'default' in game_yaml['localizations'] and 'GAMENAME' in \
                     game_yaml['localizations']['default']:
                 game_name = game_yaml['localizations']['default']['GAMENAME']
+
+        # If every fallback still resolves to a blacklisted placeholder, this
+        # configuration record has no real title. This happens for internal
+        # Ubisoft stub records used to cross-link ownership with a third-party
+        # platform (e.g. Steam) - they are not a separate playable game and
+        # must not be surfaced to Galaxy, since they share their space_id with
+        # the real, properly-named entry and would otherwise create a
+        # duplicate/conflicting library item.
+        if game_name.lower() in UBISOFT_CONFIGURATIONS_BLACKLISTED_NAMES:
+            return None
+
         return game_name
 
     def _get_steam_game_properties_from_yaml(self, game_yaml):
@@ -297,11 +308,23 @@ class LocalParser(object):
             game_type = GameType.Legacy
 
         if 'third_party_platform' in game_yaml['root']:
-            if game_yaml['root']['third_party_platform']['name'].lower() == 'steam':
+            third_party_name = game_yaml['root']['third_party_platform']['name'].lower()
+            if third_party_name == 'steam':
                 game_type = GameType.Steam
                 path, third_party_id = self._get_steam_game_properties_from_yaml(game_yaml)
-                status = get_steam_game_status(path)
-            elif game_yaml['root']['third_party_platform']['name'].lower() == 'origin':
+
+                # Steam-linked Ubisoft games can still be installed and tracked by Ubisoft Connect.
+                # Prefer the Ubisoft local install entry when it exists, then fall back to Steam.
+                local_path = get_local_game_path('', launch_id)
+                if local_path:
+                    status = get_game_installed_status(local_path)
+                    if status == GameStatus.NotInstalled:
+                        status = get_steam_game_status(path)
+                    else:
+                        path = local_path
+                else:
+                    status = get_steam_game_status(path)
+            elif third_party_name == 'origin':
                 log.info(f"Origin game found {game_yaml}")
                 # game_type = GameType.Origin
                 # path = game_yaml['root']['third_party_platform']['platform_installation_status']['register']
@@ -317,6 +340,19 @@ class LocalParser(object):
                 status = get_game_installed_status(path, exe, special_registry_path)
 
         game_name = self._get_game_name_from_yaml(game_yaml)
+
+        if game_name is None:
+            # Keep Steam-linked stubs when they carry a valid space_id so their
+            # local installation state can still merge into the real Ubisoft
+            # title coming from Club/owned sources (e.g. Valhalla on Steam).
+            if game_type == GameType.Steam and space_id:
+                game_name = f"steam_linked_{install_id or launch_id}"
+                log.info(f"Keeping Steam-linked configuration stub install_id={install_id}, launch_id={launch_id}, "
+                         f"space_id={space_id} for status merge")
+            else:
+                log.info(f"Skipping configuration record install_id={install_id}, launch_id={launch_id}: "
+                         f"no real title could be resolved (likely an internal third-party ownership stub)")
+                return None
 
         log.info(f"Parsed game from configuration {space_id}, {install_id}, {game_name}, {launch_id}")
         return UbisoftGame(
@@ -346,7 +382,9 @@ class LocalParser(object):
                             log.warning(f"Skipping malformed configuration record "
                                         f"install_id={game.get('install_id')}: missing/invalid 'root' section")
                             continue
-                        yield self._parse_game(yaml_object, game['install_id'], game['launch_id'])
+                        parsed_game = self._parse_game(yaml_object, game['install_id'], game['launch_id'])
+                        if parsed_game is not None:
+                            yield parsed_game
                     except yaml.YAMLError as e:
                         log.error(f"Skipping configuration record install_id={game.get('install_id')} "
                                   f"due to a YAML parsing error: {repr(e)}")
