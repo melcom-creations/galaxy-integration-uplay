@@ -54,12 +54,12 @@ class UbisoftGame(object):
     third_party_id: str
     name: str
     path: str
-    type: GameType
+    type: str
     special_registry_path: str
     exe: str
-    owned: bool = None
+    owned: Optional[bool] = None
     considered_for_sending: bool = False
-    status: Optional[GameStatus] = GameStatus.Unknown
+    status: str = GameStatus.Unknown
     activation_id: str = ''
 
     def as_local_game(self):
@@ -76,5 +76,5 @@ class UbisoftGame(object):
 class WatchedProcess(object):
     process: psutil.Process
     timeout: float
-    type: ProcessType
+    type: str
     game: Optional[UbisoftGame]

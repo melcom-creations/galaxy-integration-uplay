@@ -3,10 +3,13 @@ from definitions import SYSTEM, System, GameStatus
 import os
 import asyncio
 import logging as log
+from importlib import import_module
+from typing import Any
 from consts import UBISOFT_REGISTRY_LAUNCHER_INSTALLS
 
+winreg: Any = None
 if SYSTEM == System.WINDOWS:
-    import winreg
+    winreg = import_module('winreg')
 
 
 def _get_registry_value_from_path(top_key, registry_path, key):
@@ -112,5 +115,4 @@ def get_game_installed_status(path, exe=None, special_registry_path=None):
                     status = GameStatus.Installed
     except Exception as e:
         log.error(f"Error reading game installed status at {path}: {repr(e)}")
-    finally:
-        return status
+    return status

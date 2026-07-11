@@ -3,10 +3,14 @@ from definitions import SYSTEM, System
 from consts import UBISOFT_REGISTRY_LAUNCHER, UBISOFT_WOW6432_REGISTRY_LAUNCHER, APPDATA_PATH
 import os
 import logging as log
+from importlib import import_module
+from typing import Any
 
+winreg: Any = None
+ctypes: Any = None
 if SYSTEM == System.WINDOWS:
-    import winreg
-    import ctypes
+    winreg = import_module('winreg')
+    ctypes = import_module('ctypes')
 
 
 class LocalClient(object):
@@ -153,12 +157,20 @@ class LocalClient(object):
             self.launcher_log_path = None
 
     def ownership_changed(self):
+        # The status tick can run before authentication has supplied the Ubisoft
+        # user id.  In that state refresh() intentionally has no ownership path
+        # to build, so probing it would only produce a misleading warning.
+        if self.user_id is None:
+            return False
+
         path = self.ownership_path
+        if path is None:
+            log.warning('Ownership file path is unavailable after Ubisoft client initialization')
+            self.refresh()
+            return False
+
         try:
             stat = os.stat(path)
-        except TypeError:
-            log.warning('Undecided Ownership file path, uplay client might not be installed')
-            self.refresh()
         except FileNotFoundError:
             log.warning(f'Ownership file at {path} path not present, user never logged in to uplay client.')
             self.refresh()

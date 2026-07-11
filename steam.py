@@ -1,8 +1,11 @@
 import os
+from importlib import import_module
+from typing import Any
 from definitions import GameStatus
 from consts import SYSTEM, System, STEAM_REGISTRY
+winreg: Any = None
 if SYSTEM == System.WINDOWS:
-    import winreg
+    winreg = import_module('winreg')
 
 
 def _get_steam_install_path():
@@ -15,8 +18,9 @@ def _get_steam_install_path():
 
 
 def is_steam_installed():
-    if _get_steam_install_path():
-        return os.path.exists(_get_steam_install_path())
+    steam_path = _get_steam_install_path()
+    if steam_path:
+        return os.path.exists(steam_path)
     return False
 
 

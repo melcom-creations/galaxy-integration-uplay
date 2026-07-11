@@ -4,6 +4,19 @@ All notable changes to this plugin will be documented in this file.
 
 ---
 
+## v2.0.7-64bit
+
+### Fixed
+
+- **Static Types for Game State Constants:** `GameType`, `GameStatus`, and `ProcessType` provide string constants at runtime, but dataclass fields were annotated as enum instances. Static analysis therefore rejected valid `UbisoftGame` construction in the subscription and Club import paths. The annotations now match the runtime values.
+- **Misleading Ownership-Path Warning Before Login:** The periodic local-status check could run before Ubisoft authentication supplied a user ID. The ownership path is intentionally unavailable at that point, but the plugin attempted to stat it anyway and logged that Ubisoft Connect might not be installed. The check now waits for initialization; a missing path after initialization remains a real warning.
+- **Temporary Ubisoft+ Endpoint Failures Reported as Import Failures:** The optional Ubisoft+ catalogue endpoint can temporarily return `NetworkError`. This was propagated to Galaxy as a failed subscription import even though the ordinary Ubisoft library and authentication remained functional. The endpoint now logs a warning and reports no active subscription for that sync; the next scheduled sync retries normally.
+- **Incomplete local launcher files no longer interrupt scanning:** Empty or truncated ownership/settings files, missing registry values, and inaccessible process data now stop only the affected local check safely.
+- **Authentication timestamps and cached identities are validated:** Invalid session timestamps, missing authentication fields, and empty two-factor data now fail through the existing authentication flow rather than causing an unexpected exception.
+- **Friend and subscription imports use the Galaxy API result types:** Friend entries and subscription generators now match the interface expected by the current Galaxy plugin API.
+
+---
+
 ## v2.0.6-64bit
 
 ### Fixed in Version 2.0.6-64bit

@@ -3,11 +3,12 @@ from datetime import datetime
 import logging as log
 from galaxy.http import handle_exception, create_tcp_connector, create_client_session
 import dateutil.parser
+from typing import cast
 
 import aiohttp
 import asyncio
 
-from galaxy.api.errors import AuthenticationRequired, AccessDenied, UnknownError
+from galaxy.api.errors import AuthenticationRequired, AccessDenied, NetworkError, UnknownError
 
 from consts import UBISOFT_APPID, CHROME_USERAGENT
 
@@ -168,7 +169,9 @@ class BackendClient():
         self._handle_authorization_response(j)
 
     def _handle_authorization_response(self, j):
-        refresh_time = datetime.now() + (dateutil.parser.parse(j['expiration']) - dateutil.parser.parse(j['serverTime']))
+        expiration = cast(datetime, dateutil.parser.parse(j['expiration']))
+        server_time = cast(datetime, dateutil.parser.parse(j['serverTime']))
+        refresh_time = datetime.now() + (expiration - server_time)
         j['refreshTime'] = round(refresh_time.timestamp())
         self.restore_credentials(j)
 
@@ -304,6 +307,11 @@ class BackendClient():
             sub_games = await self._do_request('get', "https://api-uplayplusvault.ubi.com/v1/games")
         except AccessDenied:
             log.info("Uplay plus Subscription not active")
+            return None
+        except NetworkError:
+            # Ubisoft+ is optional. A temporary vault outage must not make
+            # Galaxy mark the complete subscription import as failed.
+            log.warning("Ubisoft+ subscription endpoint is temporarily unavailable; skipping this sync")
             return None
         return sub_games
 

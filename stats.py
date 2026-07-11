@@ -1,6 +1,7 @@
 import dateutil.parser
 import math
 import logging
+from datetime import datetime
 from typing import Tuple, Optional
 
 
@@ -11,7 +12,8 @@ def _normalize_last_played(card):
     iso_datetime = card.get('lastModified', None)
     if iso_datetime:
         dt = dateutil.parser.parse(iso_datetime)
-        return round(dt.timestamp())
+        if isinstance(dt, datetime):
+            return round(dt.timestamp())
 
 
 def _normalize_playtime(card):
@@ -97,7 +99,7 @@ def _get_playtime_heuristics(time_stats):
     return time_sum
 
 
-def find_times(statscards: dict, game_id: str = None) -> Tuple[Optional[int], Optional[int]]:
+def find_times(statscards: dict, game_id: Optional[str] = None) -> Tuple[Optional[int], Optional[int]]:
     """
     result[0] - total_playtime in minutes
     result[1] - last_played as timestamp
@@ -128,4 +130,4 @@ def find_times(statscards: dict, game_id: str = None) -> Tuple[Optional[int], Op
     if playtime and playtime <= 0:
         playtime = 0
 
-    return playtime, last_played
+    return int(playtime) if playtime is not None else None, last_played

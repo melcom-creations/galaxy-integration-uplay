@@ -153,13 +153,15 @@ class LocalParser(object):
 
     def _parse_ownership(self):
         ownership_content = self.ownership_raw
+        if not ownership_content:
+            return []
         global_offset = 0x108
         records = []
         try:
             while global_offset < len(ownership_content):
                 data = ownership_content[global_offset:]
                 launch_id, launch_id2, record_size = self._parse_ownership_header(data)
-                if launch_id:
+                if launch_id and launch_id2 and record_size:
                     records.append(launch_id)
                     if launch_id2 != launch_id:
                         records.append(launch_id2)
@@ -212,6 +214,8 @@ class LocalParser(object):
         fav = set()
         hidden = set()
         data = self.settings_raw
+        if not data or len(data) <= global_offset:
+            return fav, hidden
         if data[global_offset] != 0:
             buffer = int(data[global_offset])
             fav_records = data[global_offset + 1:global_offset + buffer + 1]
@@ -219,6 +223,8 @@ class LocalParser(object):
             fav_records = []
 
         global_offset = len(fav_records) + 3
+        if global_offset >= len(data):
+            return fav, hidden
         if data[global_offset] != 0:
             buffer = int(data[global_offset])
             hidden_records = data[global_offset + 1:global_offset + buffer + 1]

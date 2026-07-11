@@ -4,6 +4,7 @@ import re
 from file_read_backwards import FileReadBackwards
 
 from threading import Thread
+from typing import Optional
 
 import psutil as psutil
 from definitions import UbisoftGame, GameType, GameStatus, ProcessType, WatchedProcess, SYSTEM, System
@@ -46,7 +47,7 @@ class GameStatusNotifier(object):
         self.games = {}
         self.watchers = {}
         self.statuses = {}
-        self.launcher_log_path = None
+        self.launcher_log_path: Optional[str] = None
         self._legacy_game_launched = False
 
         if SYSTEM == System.WINDOWS:
@@ -75,10 +76,15 @@ class GameStatusNotifier(object):
         if not game.path:
             return None
         for p in psutil.process_iter(attrs=['exe'], ad_value=''):
-            if game.path.lower() in p.info['exe'].lower():
+            try:
+                executable = p.exe()
+            except (psutil.AccessDenied, psutil.NoSuchProcess):
+                continue
+            if isinstance(executable, str) and game.path.lower() in executable.lower():
                 try:
-                    if p.parent() and p.parent().exe() == game.path:
-                        return p.parent().pid
+                    parent = p.parent()
+                    if parent is not None and parent.exe() == game.path:
+                        return parent.pid
                     return p.pid
                 except (psutil.AccessDenied, psutil.NoSuchProcess):
                     pass
@@ -100,7 +106,10 @@ class GameStatusNotifier(object):
         if "disconnected" in log_line:
             return False
         if "has been started with product id" in log_line and f' {game.launch_id} (' in log_line:
-            pid = int(re.search('Game with process id ([-+]?[0-9]+) has been started', log_line).group(1))
+            match = re.search('Game with process id ([-+]?[0-9]+) has been started', log_line)
+            if match is None:
+                return False
+            pid = int(match.group(1))
             if pid:
                 self.process_watcher.watch_process(psutil.Process(pid), game)
                 return True

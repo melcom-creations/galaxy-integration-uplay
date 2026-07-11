@@ -38,6 +38,7 @@ import logging as log
 import multiprocessing
 import subprocess
 import webbrowser
+from importlib import import_module
 from yaml import scanner
 from urllib.parse import unquote
 from typing import Any, List, AsyncGenerator, Optional
@@ -47,7 +48,7 @@ from galaxy.api.jsonrpc import ApplicationError
 from galaxy.api.errors import InvalidCredentials, AuthenticationRequired, AccessDenied, UnknownError, \
     UnknownBackendResponse
 from galaxy.api.plugin import Plugin, create_and_run_plugin
-from galaxy.api.types import Authentication, GameTime, NextStep, FriendInfo, GameLibrarySettings, \
+from galaxy.api.types import Authentication, GameTime, NextStep, UserInfo, GameLibrarySettings, \
     SubscriptionGame, Subscription, SubscriptionDiscovery
 
 from backend import BackendClient
@@ -72,8 +73,9 @@ from games_collection import GamesCollection
 from version import __version__
 from steam import is_steam_installed
 
+ctypes: Any = None
 if SYSTEM == System.WINDOWS:
-    import ctypes
+    ctypes = import_module('ctypes')
 
 
 class UplayPlugin(Plugin):
@@ -557,10 +559,10 @@ class UplayPlugin(Plugin):
         if new_games:
             asyncio.create_task(self._add_new_games(new_games))
 
-    async def get_friends(self):
+    async def get_friends(self) -> List[UserInfo]:
         friends = await self.client.get_friends()
         return [
-            FriendInfo(user_id=friend["pid"], user_name=friend["nameOnPlatform"])
+            UserInfo(user_id=friend["pid"], user_name=friend["nameOnPlatform"])
             for friend in friends["friends"]
         ]
 
