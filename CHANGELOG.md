@@ -4,9 +4,23 @@ All notable changes to this plugin will be documented in this file.
 
 ---
 
+## v2.0.8-64bit
+
+### Fixed in Version 2.0.8-64bit
+
+- **Login Window Remained Open After Successful Ubisoft Sign-In:** Ubisoft Connect can complete authentication inside its single-page application without loading another page, and a successful login may not provide the optional `PRODrememberMe` local-storage object. The previous flow checked local storage only when its script ran and required both session and remember-me data, so Galaxy could wait indefinitely after Ubisoft had already signed the user in. The login flow now watches for the required session fields, accepts missing optional remember-me and last-profile values, and completes through the dedicated `connect.ubisoft.com/change_domain/` URL.
+- **Valid Missing Profile Data Caused Login to Fail:** Ubisoft may store `PRODlastProfile` as `null` even when the session credentials are valid. The credential parser attempted to iterate over every local-storage value and raised `TypeError` for this optional `null` entry, causing Galaxy to mark the integration as offline after closing the login window. Non-object optional entries are now ignored, while all required authentication fields remain validated before the session is accepted.
+- **Duplicate Login Configuration Removed:** `plugin.py` imported the shared authentication parameters but then replaced them with a second inline copy. The login flow now uses the single configuration in `consts.py`, keeping the login URL, completion matcher, and injected authentication script consistent.
+
+### Special Thanks for Version 2.0.8-64bit
+
+- Thanks to **Kazio\_Wihura** for reporting the login issue and testing the fix.
+
+---
+
 ## v2.0.7-64bit
 
-### Fixed
+### Fixed in Version 2.0.7-64bit
 
 - **Static Types for Game State Constants:** `GameType`, `GameStatus`, and `ProcessType` provide string constants at runtime, but dataclass fields were annotated as enum instances. Static analysis therefore rejected valid `UbisoftGame` construction in the subscription and Club import paths. The annotations now match the runtime values.
 - **Misleading Ownership-Path Warning Before Login:** The periodic local-status check could run before Ubisoft authentication supplied a user ID. The ownership path is intentionally unavailable at that point, but the plugin attempted to stat it anyway and logged that Ubisoft Connect might not be installed. The check now waits for initialization; a missing path after initialization remains a real warning.

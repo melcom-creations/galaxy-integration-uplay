@@ -59,16 +59,6 @@ from local_helper import get_local_game_path, get_size_at_path
 from definitions import GameStatus, UbisoftGame, GameType, System, SYSTEM
 from stats import find_times
 from consts import AUTH_PARAMS, AUTH_JS
-
-try:
-    from consts import UBISOFT_APPID, UBISOFT_GENOMEID
-except ImportError:
-    try:
-        from consts import UBISOFT_LOGIN_APPID as UBISOFT_APPID
-        UBISOFT_GENOMEID = "85c31714-0941-4876-a18d-2c7e9dce8d40"
-    except ImportError:
-        UBISOFT_APPID = "314d4fef-e568-454a-ae06-43e3bece12a6"
-        UBISOFT_GENOMEID = "85c31714-0941-4876-a18d-2c7e9dce8d40"
 from games_collection import GamesCollection
 from version import __version__
 from steam import is_steam_installed
@@ -97,32 +87,8 @@ class UplayPlugin(Plugin):
         self.lost_authentication()
 
     async def authenticate(self, stored_credentials=None):
-
-        custom_auth_params = {
-            "window_title": "Login | Ubisoft WebAuth",
-            "window_width": 460,
-            "window_height": 690,
-            "start_uri": f"https://connect.ubisoft.com/login?appId={UBISOFT_APPID}&genomeId={UBISOFT_GENOMEID}&lang=en-US&nextUrl=https:%2F%2Fconnect.ubisoft.com%2F",
-            "end_uri_regex": r".*rememberMeTicket.*"
-        }
-
-        custom_auth_js = {
-            r".*connect\.ubisoft\.com.*": [
-                r'''
-                var loginData = window.localStorage.getItem("PRODloginData");
-                var rememberMe = window.localStorage.getItem("PRODrememberMe");
-                var lastProfile = window.localStorage.getItem("PRODlastProfile");
-                if (loginData && rememberMe && rememberMe.includes("rememberMeTicket") && !window.location.pathname.includes("login")) {
-                    if (!window.location.href.includes("change_domain")) {
-                        window.location.replace("https://connect.ubisoft.com/change_domain/" + loginData + "," + rememberMe + "," + lastProfile);
-                    }
-                }
-                '''
-            ]
-        }
-
         if not stored_credentials:
-            return NextStep("web_session", custom_auth_params, js=custom_auth_js)
+            return NextStep("web_session", AUTH_PARAMS, js=AUTH_JS)
         else:
             try:
                 user_data = await self.client.authorise_with_stored_credentials(stored_credentials)

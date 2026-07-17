@@ -217,9 +217,17 @@ class BackendClient():
         user_data = {}
         tasty_storage_values = ['userId', 'nameOnPlatform', 'ticket', 'rememberMeTicket', 'sessionId']
         for json_ in storage_jsons:
+            # PRODlastProfile is legitimately null for some Ubisoft accounts.
+            # Only the login and remember-me objects contain authentication data.
+            if not isinstance(json_, dict):
+                continue
             for key in json_:
                 if key in tasty_storage_values:
                     user_data[key] = json_[key]
+
+        required_values = ('userId', 'nameOnPlatform', 'ticket', 'sessionId')
+        if any(not user_data.get(key) for key in required_values):
+            raise AuthenticationRequired()
 
         user_data['userId'] = user_data.pop('userId')
         user_data['username'] = user_data.pop('nameOnPlatform')
