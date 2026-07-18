@@ -1,54 +1,54 @@
 # Ubisoft Connect Integration Plugin for GOG Galaxy 2.1+ (64-bit)
 
-This repository contains the Ubisoft Connect integration plugin for the 64-bit version of GOG Galaxy 2.1+.
-
-The original community integration has been updated to work with the current 64-bit GOG Galaxy client and Python 3.13. In addition to compatibility improvements, this project includes dependency updates, bug fixes, stability improvements, and ongoing maintenance.
+This repository contains the Ubisoft Connect integration plugin for the native 64-bit version of GOG Galaxy 2.1+. It is based on the original community integration and has been updated for the current GOG Galaxy client and Python 3.13. The project includes updated dependencies, login and compatibility fixes, stability improvements, and ongoing maintenance.
 
 ---
 
 ## ✨ Features
 
-- Compatible with GOG Galaxy 2.1+ (64-bit)
-- Python 3.13 support
-- Updated 64-bit dependencies
-- Improved login reliability
-- Modern Ubisoft Connect compatibility
-- Improved stability and compatibility
-- Ongoing maintenance and bug fixes
+* Imports your owned Ubisoft Connect games into GOG Galaxy
+* Imports supported Ubisoft subscription games
+* Imports game time from Ubisoft Connect
+* Detects locally installed Ubisoft games
+* Installs, launches, and uninstalls games through Ubisoft Connect
+* Supports Ubisoft games linked to third-party launchers where available
+* Includes improved login reliability and current Ubisoft API identifiers
+* Supports GOG Galaxy 2.1+ 64-bit and Python 3.13
+* Includes updated dependencies, compatibility fixes, and stability improvements
 
 ---
 
 ## 🛠️ Technical Highlights
 
-This section summarizes the parts of the plugin that make the integration work reliably on current 64-bit systems.
-
-- ⚙️ **64-bit Registry Handling** - Ubisoft Connect installation data is read from the redirected 32-bit registry view when needed, with a fallback to the native registry view. This lets the plugin detect installed games correctly on modern 64-bit Windows systems.
-
-- 🛡️ **Crash Protection in Game Loading** - The game loading path wraps local parsing and Ubisoft API calls in exception handling. If an API request or filesystem read fails, the plugin returns an empty result instead of crashing GOG Galaxy.
-
-- 🔑 **Current Login and API Identifiers** - The login flow uses the current Ubisoft Connect login app ID, while API requests use a separate Ubisoft App ID. Legacy identifiers are kept as fallback values where needed.
-
-- 🧹 **Bundled Runtime Dependencies** - The plugin ships with its required Python runtime modules in the `modules` folder so GOG Galaxy can load the integration without relying on a separate environment.
-
-- 📄 **Usage and Recovery Notes** - The README includes installation steps, plugin database reset guidance, and support details to help with common setup issues.
+* **64-bit Registry Handling** - Reads Ubisoft Connect installation data from the redirected 32-bit registry view when required and falls back to the native registry view.
+* **Game Loading Protection** - Handles local parsing, filesystem, and Ubisoft API failures without crashing GOG Galaxy.
+* **Current Login and API Identifiers** - Uses the current Ubisoft Connect login and API identifiers while retaining compatible fallback values.
+* **Bundled Runtime Dependencies** - Includes the required Python modules so no separate Python installation is needed.
 
 ---
 
 ## 📦 Installation
 
-### Standard Installation (Recommended)
+### Automatic Installation with Plugin Updater (Recommended)
 
-1. Close GOG Galaxy completely.
-2. Download the latest release from this repository.
-3. Open:
+The easiest way to install the Ubisoft Connect integration is with the [melcom GOG Galaxy Plugin Updater](https://github.com/melcom-creations/galaxy-integrations-64bit/tree/main/tools/melcom-galaxy_plugin_updater). The updater detects existing integrations and can install any supported melcom plugins that are still missing.
+
+1. Download and extract the Plugin Updater.
+2. Double-click `update-plugins.bat`.
+3. Select your preferred language.
+4. Follow the displayed instructions.
+
+### Manual Installation
+
+1. Close GOG Galaxy completely and make sure it is no longer running in the system tray.
+2. Download the latest release package from this repository.
+3. Extract the ZIP archive directly into:
 
 ```text
 %localappdata%\GOG.com\Galaxy\plugins\installed\
 ```
 
-1. Extract the ZIP archive **directly into this folder**.
-
-The resulting directory structure **must** look like this:
+The resulting directory structure must look like this:
 
 ```text
 %localappdata%\GOG.com\Galaxy\plugins\installed\
@@ -59,34 +59,38 @@ The resulting directory structure **must** look like this:
     └── ...
 ```
 
-1. Start GOG Galaxy.
+4. Continue with **First Start and Initial Sync** below.
 
 ---
 
-## 🔄 Resetting the Plugin Database (Recommended)
+## 🚀 First Start and Initial Sync
 
-If the plugin behaves unexpectedly after an update, resetting the local plugin database is recommended.
+For the first synchronization after installing or updating the plugin:
 
-1. Open `C:\ProgramData\GOG.com\Galaxy\storage\plugins\` and find the files starting with `uplay_` and ending in `-storage.db`.
-2. Rename each by appending `.old` (e.g. `uplay_xxxxxxxxx-storage.db` -> `uplay_xxxxxxxxx-storage.db.old`).
-3. Start GOG Galaxy again and reconnect the Ubisoft Connect integration if necessary.
-
-### 🚀 First Start and Initial Sync (Important)
-
-For a clean first run after installing or updating the plugin:
-
-1. Close GOG Galaxy.
-2. Open this folder:
-
-```text
-C:\ProgramData\GOG.com\Galaxy\storage\plugins\
-```
-
-1. If a `uplay_...-storage.db` file exists there, delete it.
+1. Start Ubisoft Connect and keep it open.
 2. Start GOG Galaxy.
-3. Start Ubisoft Connect and keep it open.
-4. In GOG Galaxy, open the account menu (top-right) and click **Sync integrations**.
-5. Wait until sync finishes.
+3. Connect the Ubisoft Connect integration through **Settings -> Integrations** if necessary.
+4. Complete the Ubisoft login when prompted.
+5. Open the account menu in the top-right corner and select **Sync integrations**.
+6. Wait until the synchronization has finished.
+
+---
+
+## 🔄 Resetting the Plugin Database (Troubleshooting)
+
+Reset the local plugin database only if the integration behaves unexpectedly or synchronization problems continue after restarting both applications.
+
+1. Close GOG Galaxy completely.
+2. Open `C:\ProgramData\GOG.com\Galaxy\storage\plugins\`.
+3. Find every file starting with `uplay_` and ending in `-storage.db`.
+4. Rename each matching file by appending `.old`, for example:
+
+   `uplay_xxxxxxxxx-storage.db` -> `uplay_xxxxxxxxx-storage.db.old`
+
+5. Start Ubisoft Connect and keep it open.
+6. Start GOG Galaxy and reconnect the Ubisoft Connect integration if necessary.
+7. Open the account menu in the top-right corner and select **Sync integrations**.
+8. Wait until the synchronization has finished.
 
 ---
 
