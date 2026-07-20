@@ -14,6 +14,9 @@ This plugin imports your Ubisoft Connect library into GOG Galaxy 2.1+ 64-bit. Ba
 * Supports Ubisoft games linked to third-party launchers where available
 * Includes improved login reliability and current Ubisoft API identifiers
 
+> [!NOTE]
+> macOS compatibility may be technically possible, but it is currently untested because I do not have access to a Mac. If you use macOS and would like to help test the integration, feel free to contact me.
+
 ---
 
 ## 🛠️ Technical Highlights
