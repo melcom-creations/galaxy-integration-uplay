@@ -4,6 +4,19 @@ All notable changes to this plugin will be documented in this file.
 
 ---
 
+## v2.0.9-64bit
+
+### Fixed in Version 2.0.9-64bit
+
+- **Owned Ubisoft Libraries Were Incomplete:** The legacy Club GraphQL request can return only a subset of the PC games owned by an account, while the local Ubisoft ownership cache may also omit newer titles. The plugin now uses the current Ubisoft Connect entitlement endpoint as the authoritative ownership source, accepts only owned, non-expired game entitlements, and matches them to local entries through their space or product IDs. This restores titles that were present in Ubisoft Connect but missing from GOG Galaxy without treating every local configuration record as owned.
+- **Owned Games Without Existing Local Metadata Could Not Be Imported:** Entitlements can identify owned games that are absent from the local Ubisoft cache. The plugin now retrieves their names and platform metadata in bounded batches, imports PC titles with stable Ubisoft space IDs, and keeps the previous Club request as a compatibility fallback for titles omitted by the current catalogue metadata response.
+
+### Special Thanks for Version 2.0.9-64bit
+
+- Thanks to **hausi2** for reporting the incomplete Ubisoft library and testing the fix.
+
+---
+
 ## v2.0.8-64bit
 
 ### Fixed in Version 2.0.8-64bit

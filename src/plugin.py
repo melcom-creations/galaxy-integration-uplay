@@ -81,6 +81,7 @@ class UplayPlugin(Plugin):
         self.updating_games = False
         self.owned_games_sent = False
         self.parsing_club_games = False
+        self.parsing_entitlement_games = False
         self.parsed_local_games = False
 
     def auth_lost(self):
@@ -122,6 +123,16 @@ class UplayPlugin(Plugin):
                 self._parse_local_games()
                 self._parse_local_game_ownership()
 
+            try:
+                await self._parse_entitlement_games()
+            except AuthenticationRequired:
+                raise
+            except Exception as e:
+                log.exception(f"Parsing entitlement games failed: {repr(e)}")
+
+            # Keep the former Club request as a compatibility fallback. The
+            # entitlement endpoint is authoritative for ownership, while Club
+            # can still supply metadata for titles omitted by the catalog.
             try:
                 await self._parse_club_games()
             except Exception as e:
@@ -169,6 +180,140 @@ class UplayPlugin(Plugin):
                 activation_id=str(game['id'])
             ))
         self.games_collection.extend(subscription_games)
+
+    async def _parse_entitlement_games(self):
+        """Import ownership from the endpoint used by current Ubisoft Connect clients."""
+        batch_size = 50
+
+        if self.parsing_entitlement_games:
+            while self.parsing_entitlement_games:
+                await asyncio.sleep(0.2)
+            return
+
+        self.parsing_entitlement_games = True
+        try:
+            data = await self.client.get_entitlements()
+            if not isinstance(data, dict):
+                raise UnknownBackendResponse()
+
+            entitlements = data.get('entitlements', [])
+            # Older responses wrapped the list in a GraphQL-style nodes object.
+            if isinstance(entitlements, dict):
+                entitlements = entitlements.get('nodes', [])
+            if not isinstance(entitlements, list):
+                raise UnknownBackendResponse()
+
+            owned_entitlements = []
+            for entitlement in entitlements:
+                if not isinstance(entitlement, dict):
+                    continue
+                access_level = str(entitlement.get('accessLevel') or '').lower()
+                entitlement_type = str(entitlement.get('type') or '').lower()
+                availability = str(entitlement.get('availability') or '').lower()
+                if access_level != 'owned' or entitlement_type != 'game' or availability == 'expired':
+                    continue
+
+                space_id = str(entitlement.get('spaceId') or '').strip()
+                product_id = str(entitlement.get('productId') or '').strip()
+                if space_id or product_id:
+                    owned_entitlements.append((space_id, product_id))
+
+            owned_space_ids = {space_id for space_id, _ in owned_entitlements if space_id}
+            owned_product_ids = {product_id for _, product_id in owned_entitlements if product_id}
+
+            local_matches = 0
+            newly_owned_local_games = 0
+            for game in self.games_collection:
+                matches_space = bool(game.space_id and game.space_id in owned_space_ids)
+                matches_product = bool(
+                    (game.install_id and game.install_id in owned_product_ids)
+                    or (game.launch_id and game.launch_id in owned_product_ids)
+                )
+                if matches_space or matches_product:
+                    local_matches += 1
+                    if game.owned is not True:
+                        newly_owned_local_games += 1
+                    game.owned = True
+
+            product_ids_by_space = {
+                space_id: product_id
+                for space_id, product_id in owned_entitlements
+                if space_id and product_id
+            }
+            space_ids = list(dict.fromkeys(
+                space_id for space_id, _ in owned_entitlements if space_id
+            ))
+            detailed_games = []
+
+            def contains_pc_platform(value):
+                if isinstance(value, dict):
+                    if str(value.get('type') or '').upper() == 'PC':
+                        return True
+                    return any(contains_pc_platform(item) for item in value.values())
+                if isinstance(value, list):
+                    return any(contains_pc_platform(item) for item in value)
+                return False
+
+            for offset in range(0, len(space_ids), batch_size):
+                batch = space_ids[offset:offset + batch_size]
+                try:
+                    response = await self.client.get_owned_game_details(batch)
+                    if isinstance(response, dict) and response.get('errors'):
+                        log.warning(
+                            f"Ubisoft returned GraphQL errors for ownership metadata batch "
+                            f"{offset // batch_size + 1}: {response['errors']}"
+                        )
+                    response_data = response.get('data', {}) if isinstance(response, dict) else {}
+                    games = response_data.get('games', []) if isinstance(response_data, dict) else []
+                    if not isinstance(games, list):
+                        log.warning(
+                            f"Unexpected Ubisoft ownership metadata response for batch "
+                            f"{offset // batch_size + 1}"
+                        )
+                        continue
+
+                    for game in games:
+                        if not isinstance(game, dict):
+                            continue
+                        if not contains_pc_platform(game):
+                            continue
+
+                        space_id = str(game.get('spaceId') or game.get('id') or '').strip()
+                        game_name = str(game.get('name') or '').strip()
+                        if not space_id or not game_name:
+                            continue
+
+                        product_id = str(product_ids_by_space.get(space_id) or '').strip()
+
+                        detailed_games.append(UbisoftGame(
+                            space_id=space_id,
+                            launch_id=product_id,
+                            install_id=product_id,
+                            third_party_id='',
+                            name=game_name,
+                            path='',
+                            type=GameType.New,
+                            special_registry_path='',
+                            exe='',
+                            status=GameStatus.Unknown,
+                            owned=True
+                        ))
+                except AuthenticationRequired:
+                    raise
+                except Exception as e:
+                    log.warning(
+                        f"Unable to parse Ubisoft ownership metadata batch "
+                        f"{offset // batch_size + 1}: {repr(e)}"
+                    )
+
+            self.games_collection.extend(detailed_games)
+            log.info(
+                f"Entitlement Request returned {len(owned_entitlements)} owned games; "
+                f"matched {local_matches} local entries ({newly_owned_local_games} newly marked owned) "
+                f"and parsed {len(detailed_games)} metadata entries"
+            )
+        finally:
+            self.parsing_entitlement_games = False
 
     async def _parse_club_games(self):
         def get_platforms(game):
@@ -298,6 +443,12 @@ class UplayPlugin(Plugin):
             return local_games
 
     async def _add_new_games(self, games):
+        try:
+            await self._parse_entitlement_games()
+        except AuthenticationRequired:
+            raise
+        except Exception as e:
+            log.warning(f"Refreshing entitlement games failed: {repr(e)}")
         await self._parse_club_games()
         self._parse_local_game_ownership()
         for game in games:

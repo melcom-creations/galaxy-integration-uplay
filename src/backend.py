@@ -286,6 +286,51 @@ class BackendClient():
         return await self._do_request_safe('post', "https://public-ubiservices.ubi.com/v1/profiles/me/uplay/graphql",
                                            add_to_headers=headers, data=payload)
 
+    async def get_entitlements(self):
+        headers = {'Ubi-LocaleCode': 'en-US'}
+        return await self._do_request_safe(
+            'get',
+            'https://api-ubiservices.ubi.com/v1/profiles/me/global/ubiconnect/entitlement/api/entitlements',
+            add_to_headers=headers
+        )
+
+    async def get_owned_game_details(self, space_ids):
+        payload = {
+            'operationName': 'GetOwnedGames',
+            'variables': {
+                'spaceIds': space_ids,
+                'shouldIncludeStatsFields': False
+            },
+            'query': "query GetOwnedGames($spaceIds: [String!], $shouldIncludeStatsFields: Boolean = false) {"
+                     "  games(spaceIds: $spaceIds) {"
+                     "    id"
+                     "    spaceId"
+                     "    name"
+                     "    platform { ...PlatformFragment }"
+                     "    availablePlatformGroups { ...PlatformFragment }"
+                     "    availablePlatforms { nodes { ...PlatformFragment } }"
+                     "    viewer {"
+                     "      meta {"
+                     "        ownedCrossplayPlatforms { nodes { ...PlatformFragment } }"
+                     "      }"
+                     "    }"
+                     "  }"
+                     "}"
+                     "fragment PlatformFragment on Platform {"
+                     "  id"
+                     "  name"
+                     "  type"
+                     "  applicationId"
+                     "}"
+        }
+        headers = {'Content-Type': 'application/json'}
+        return await self._do_request_safe(
+            'post',
+            'https://public-ubiservices.ubi.com/v1/profiles/me/uplay/graphql',
+            add_to_headers=headers,
+            data=json.dumps(payload)
+        )
+
     async def get_game_stats(self, space_id):
         url = f"https://public-ubiservices.ubi.com/v1/profiles/{self.user_id}/statscard?spaceId={space_id}"
         headers = {'Ubi-RequestedPlatformType': "uplay",
