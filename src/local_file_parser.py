@@ -371,7 +371,8 @@ class LocalParser(object):
             type=game_type,
             special_registry_path=special_registry_path,
             exe=exe,
-            status=status
+            status=status,
+            from_local_configuration=True
         )
 
     def parse_games(self, configuration_data):

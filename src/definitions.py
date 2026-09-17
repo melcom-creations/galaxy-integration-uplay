@@ -61,6 +61,7 @@ class UbisoftGame(object):
     considered_for_sending: bool = False
     status: str = GameStatus.Unknown
     activation_id: str = ''
+    from_local_configuration: bool = False
 
     def as_local_game(self):
         if not self.space_id:

@@ -44,6 +44,32 @@ class GamesCollection(list):
             target.third_party_id = source.third_party_id
         if source.type and target.type != GameType.Steam:
             target.type = source.type
+        if source.from_local_configuration:
+            target.from_local_configuration = True
+        if self._has_useful_name(source) or not self._has_useful_name(target):
+            if source.name:
+                target.name = source.name
+
+    @staticmethod
+    def _same_space(current, incoming):
+        return bool(current.space_id and incoming.space_id and current.space_id == incoming.space_id)
+
+    @staticmethod
+    def _is_native_local(game):
+        return game.from_local_configuration and game.type in (GameType.New, GameType.Legacy)
+
+    def _replace_with_local_metadata(self, target, source):
+        """Replace launcher-routing data with one complete local configuration record."""
+        target.space_id = source.space_id or target.space_id
+        target.install_id = source.install_id
+        target.launch_id = source.launch_id
+        target.path = source.path
+        target.special_registry_path = source.special_registry_path
+        target.exe = source.exe
+        target.third_party_id = source.third_party_id
+        target.type = source.type
+        target.status = source.status
+        target.from_local_configuration = True
         if self._has_useful_name(source) or not self._has_useful_name(target):
             if source.name:
                 target.name = source.name
@@ -78,24 +104,42 @@ class GamesCollection(list):
         for game_in_list in self:
             if (game.space_id and game.space_id == game_in_list.space_id) or (game.install_id and game.install_id == game_in_list.install_id) or \
                     (game.launch_id and game.launch_id == game_in_list.launch_id):
-                if self._should_replace_metadata(game_in_list, game):
-                    log.debug(f"Extending existing game entry {game_in_list} with preferred metadata from {game}")
-                    self._copy_preferred_metadata(game_in_list, game)
-                if game.install_id and game.launch_id and game.install_id != game.launch_id and (game_in_list.install_id == game_in_list.launch_id):
-                    log.debug(f"Extending existing game entry {game_in_list} with more specific install/launch id launch id: {game.launch_id} and install id: {game.install_id}")
-                    game_in_list.install_id = game.install_id
-                    game_in_list.launch_id = game.launch_id
-                if game.install_id and not game_in_list.install_id:
-                    log.debug(f"Extending existing game entry {game_in_list} with launch id: {game.launch_id} and install id: {game.install_id}")
-                    game_in_list.install_id = game.install_id
-                    game_in_list.launch_id = game.launch_id
-                if game.space_id and not game_in_list.space_id:
-                    log.debug(f"Extending existing game entry {game_in_list} with space id: {game.space_id}")
-                    game_in_list.space_id = game.space_id
-                if self._status_rank(game.status) > self._status_rank(game_in_list.status):
-                    log.debug(f"Extending existing game entry {game_in_list} with installation status: {game.status}")
-                    game_in_list.status = game.status
-                    self._copy_preferred_metadata(game_in_list, game)
+                same_space = self._same_space(game_in_list, game)
+                incoming_native_local = same_space and self._is_native_local(game)
+                current_native_local = same_space and self._is_native_local(game_in_list)
+                incoming_steam_local = same_space and game.from_local_configuration and game.type == GameType.Steam
+                current_steam_local = same_space and game_in_list.from_local_configuration and game_in_list.type == GameType.Steam
+
+                if incoming_native_local and current_steam_local:
+                    log.info(
+                        f"Preferring native Ubisoft configuration for multi-source game {game.name} "
+                        f"over Steam-linked configuration"
+                    )
+                    self._replace_with_local_metadata(game_in_list, game)
+                elif current_native_local and incoming_steam_local:
+                    log.info(
+                        f"Keeping native Ubisoft configuration for multi-source game {game_in_list.name} "
+                        f"instead of Steam-linked configuration"
+                    )
+                else:
+                    if self._should_replace_metadata(game_in_list, game):
+                        log.debug(f"Extending existing game entry {game_in_list} with preferred metadata from {game}")
+                        self._copy_preferred_metadata(game_in_list, game)
+                    if game.install_id and game.launch_id and game.install_id != game.launch_id and (game_in_list.install_id == game_in_list.launch_id):
+                        log.debug(f"Extending existing game entry {game_in_list} with more specific install/launch id launch id: {game.launch_id} and install id: {game.install_id}")
+                        game_in_list.install_id = game.install_id
+                        game_in_list.launch_id = game.launch_id
+                    if game.install_id and not game_in_list.install_id:
+                        log.debug(f"Extending existing game entry {game_in_list} with launch id: {game.launch_id} and install id: {game.install_id}")
+                        game_in_list.install_id = game.install_id
+                        game_in_list.launch_id = game.launch_id
+                    if game.space_id and not game_in_list.space_id:
+                        log.debug(f"Extending existing game entry {game_in_list} with space id: {game.space_id}")
+                        game_in_list.space_id = game.space_id
+                    if self._status_rank(game.status) > self._status_rank(game_in_list.status):
+                        log.debug(f"Extending existing game entry {game_in_list} with installation status: {game.status}")
+                        game_in_list.status = game.status
+                        self._copy_preferred_metadata(game_in_list, game)
                 if game.owned is not None:
                     log.debug(f"Extending existing game entry {game_in_list} with owned status: {game.owned}")
                     game_in_list.owned = game.owned

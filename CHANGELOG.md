@@ -4,6 +4,18 @@ All notable changes to this plugin will be documented in this file.
 
 ---
 
+## v2.0.10-64bit
+
+### Fixed in Version 2.0.10-64bit
+
+- **Dual-Owned Games Opened Steam From The Ubisoft Connect Entry:** Ubisoft Connect can store both a Steam-linked configuration and a native Ubisoft configuration for the same `space_id` while omitting both product IDs from its local ownership file. The previous merge discarded the native route and later used the Steam App ID after online ownership was confirmed by `space_id`. When both real local configurations exist, the native Ubisoft configuration now wins regardless of the incomplete local ownership file. Remote Club and entitlement metadata still cannot turn a Steam-only local configuration into a native one.
+
+### Special Thanks for Version 2.0.10-64bit
+
+- Thanks to **MacStew** for reporting the dual-ownership routing issue, comparing the behavior with 2.0.6-64bit, retesting, and providing the decisive log.
+
+---
+
 ## v2.0.9-64bit
 
 ### Fixed in Version 2.0.9-64bit
