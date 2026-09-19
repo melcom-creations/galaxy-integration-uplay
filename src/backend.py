@@ -7,12 +7,16 @@ from typing import cast
 
 import aiohttp
 import asyncio
+import time
 
 from galaxy.api.errors import AuthenticationRequired, AccessDenied, NetworkError, UnknownError
 
 from consts import UBISOFT_APPID, CHROME_USERAGENT
 
 class BackendClient():
+    REFRESH_MARGIN_SECONDS = 120
+    REFRESH_RETRY_SECONDS = 60
+
     def __init__(self, plugin):
         self._plugin = plugin
         self._auth_lost_callback = None
@@ -22,7 +26,11 @@ class BackendClient():
         self.refresh_time = None
         self.user_id = None
         self.user_name = None
-        self.__refresh_in_progress = False
+        self._refresh_task = None
+        self._maintenance_task = None
+        self._refresh_retry_at = 0
+        self._authentication_lost = False
+        self._closing = False
         connector = create_tcp_connector(limit=30)
         headers = {
             'Authorization': None,
@@ -34,9 +42,13 @@ class BackendClient():
                                               cookie_jar=None, headers=headers)
 
     async def close(self):
-        # Allow the refresh workflow to finish before closing.
-        if self.__refresh_in_progress:
-            await asyncio.sleep(1.5)
+        self._closing = True
+        tasks = [task for task in (self._maintenance_task, self._refresh_task)
+                 if task is not None]
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
         await self._session.close()
 
     async def request(self, method, url, *args, **kwargs):
@@ -55,7 +67,41 @@ class BackendClient():
         self._auth_lost_callback = callback
 
     def is_authenticated(self):
-        return self.token is not None
+        return self.token is not None and not self._authentication_lost
+
+    def _refresh_due(self):
+        # refreshTime describes the session ticket, not the remember-me ticket.
+        return (self.refresh_time is None or
+                time.time() >= float(self.refresh_time) - self.REFRESH_MARGIN_SECONDS)
+
+    def maintain_authentication(self):
+        # Called by Galaxy's tick even when no library request is pending.
+        if (self._closing or not self.is_authenticated() or
+                self._auth_lost_callback is None or
+                time.monotonic() < self._refresh_retry_at):
+            return
+        if self._maintenance_task is not None and not self._maintenance_task.done():
+            return
+        if self._refresh_due():
+            self._maintenance_task = asyncio.create_task(self._maintain_authentication())
+
+    def _notify_authentication_lost(self):
+        if not self._authentication_lost:
+            self._authentication_lost = True
+            if self._auth_lost_callback:
+                self._auth_lost_callback()
+
+    async def _maintain_authentication(self):
+        try:
+            await self._refresh_auth()
+        except (AccessDenied, AuthenticationRequired):
+            log.warning('Scheduled authentication refresh was rejected.')
+            self._notify_authentication_lost()
+        except Exception as error:
+            # A network/backend failure does not invalidate the saved login.
+            self._refresh_retry_at = time.monotonic() + self.REFRESH_RETRY_SECONDS
+            log.warning('Scheduled authentication refresh failed (%s); retrying later.',
+                        type(error).__name__)
 
     async def _do_request(self, method, *args, **kwargs):
         if not kwargs or 'headers' not in kwargs:
@@ -75,9 +121,9 @@ class BackendClient():
         result = {}
         try:
             refresh_needed = False
-            if self.refresh_token:
-                log.debug(f'rememberMeTicket expiration time: {str(self.refresh_time)}')
-                refresh_needed = self.refresh_time is None or datetime.now() > datetime.fromtimestamp(int(self.refresh_time))
+            if self.is_authenticated():
+                log.debug(f'Session ticket expiration time: {str(self.refresh_time)}')
+                refresh_needed = self._refresh_due()
             if refresh_needed:
                 await self._refresh_auth()
                 result = await self._do_request(method, *args, **kwargs)
@@ -93,8 +139,7 @@ class BackendClient():
                     result = await self._do_request(method, *args, **kwargs)
         except (AccessDenied, AuthenticationRequired) as e:
             log.debug(f"Unable to refresh authentication calling auth lost: {repr(e)}")
-            if self._auth_lost_callback:
-                self._auth_lost_callback()
+            self._notify_authentication_lost()
             raise
         except Exception as e:
             log.debug("Refresh workflow has failed:" + repr(e))
@@ -109,22 +154,26 @@ class BackendClient():
         })
 
     async def _refresh_auth(self):
-        if self.__refresh_in_progress:
-            log.info('Refreshing already in progress.')
-            while self.__refresh_in_progress:
-                await asyncio.sleep(0.2)
-        else:
-            self.__refresh_in_progress = True
-            try:
-                await self._refresh_ticket()
-                self._plugin.store_credentials(self.get_credentials())
-            except Exception as e:
-                log.warning(f"Ticket refresh failed, falling back to remember-me refresh: {repr(e)}")
-                await self._refresh_remember_me()
-                await self._refresh_ticket()
-                self._plugin.store_credentials(self.get_credentials())
-            finally:
-                self.__refresh_in_progress = False
+        if self._closing:
+            raise asyncio.CancelledError()
+        if self._refresh_task is None or self._refresh_task.done():
+            self._refresh_task = asyncio.create_task(self._perform_refresh())
+            # Observe failures even if the original caller is cancelled.
+            self._refresh_task.add_done_callback(
+                lambda task: task.exception() if not task.cancelled() else None)
+        # All callers receive the same result; cancelling one leaves the refresh alive.
+        await asyncio.shield(self._refresh_task)
+
+    async def _perform_refresh(self):
+        try:
+            await self._refresh_ticket()
+        except (AccessDenied, AuthenticationRequired) as error:
+            if not self.refresh_token:
+                raise
+            log.warning('Ticket refresh rejected; trying remember-me authentication: %r', error)
+            # The POST already returns a fresh session ticket and remember-me token.
+            await self._refresh_remember_me()
+        self._plugin.store_credentials(self.get_credentials())
 
     async def _refresh_remember_me(self):
         log.debug('Refreshing rememberMeTicket')
@@ -182,6 +231,8 @@ class BackendClient():
         if data.get('username'):
             self.user_name = data['username']
         self.refresh_time = data.get('refreshTime', '0')
+        self._authentication_lost = False
+        self._refresh_retry_at = 0
         if data.get('rememberMeTicket'):
             self.refresh_token = data['rememberMeTicket']
 

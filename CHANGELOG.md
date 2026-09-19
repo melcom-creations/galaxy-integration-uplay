@@ -4,6 +4,15 @@ All notable changes to this plugin will be documented in this file.
 
 ---
 
+## v2.0.11-64bit
+
+### Fixed in Version 2.0.11-64bit
+
+- **Session Refresh Started Too Late:** Galaxy's periodic tick now checks the Ubisoft session and starts renewal two minutes before the ticket expires, including between library synchronizations. Request-time checks use the same safety margin, also for sessions without a remember-me token.
+- **Refresh Coordination and Recovery:** Concurrent callers share the refresh result. A rejected session ticket can fall back to remember-me authentication, whose fresh credentials are saved without an unnecessary second ticket renewal. Temporary network/backend failures in scheduled refreshes are retried without reporting a lost login; rejected authentication is still reported to Galaxy. Pending refresh tasks are cancelled during shutdown.
+
+---
+
 ## v2.0.10-64bit
 
 ### Fixed in Version 2.0.10-64bit

@@ -787,6 +787,7 @@ class UplayPlugin(Plugin):
 
     def tick(self):
         loop = asyncio.get_event_loop()
+        self.client.maintain_authentication()
         if SYSTEM == System.WINDOWS:
             self.tick_count += 1
             if self.tick_count % 1 == 0:
